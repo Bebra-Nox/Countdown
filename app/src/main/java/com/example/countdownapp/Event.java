@@ -31,8 +31,6 @@ public class Event {
     public boolean isPositive() {
         return isPositive;
     }
-
-    // Сериализация одного события в JSONObject
     public JSONObject toJson() throws JSONException {
         JSONObject obj = new JSONObject();
         obj.put("name", name);
@@ -40,16 +38,12 @@ public class Event {
         obj.put("isPositive", isPositive);
         return obj;
     }
-
-    // Десериализация из JSONObject
     public static Event fromJson(JSONObject json) throws JSONException {
         String name = json.getString("name");
         LocalDate date = LocalDate.parse(json.getString("date"));
         boolean isPositive = json.getBoolean("isPositive");
         return new Event(name, date, isPositive);
     }
-
-    // Перевод списка событий в JSONArray
     public static JSONArray toJsonArray(List<Event> events) throws JSONException {
         JSONArray array = new JSONArray();
         for (Event event : events) {
@@ -57,8 +51,6 @@ public class Event {
         }
         return array;
     }
-
-    // Перевод JSONArray обратно в список событий
     public static List<Event> fromJsonArray(JSONArray array) throws JSONException {
         List<Event> list = new ArrayList<>();
         for (int i = 0; i < array.length(); i++) {
@@ -66,8 +58,6 @@ public class Event {
         }
         return list;
     }
-
-    // Возвращает JSON-строку из списка событий
     public static String toJsonList(List<Event> events) {
         try {
             return toJsonArray(events).toString();
@@ -75,8 +65,6 @@ public class Event {
             return "";
         }
     }
-
-    // Возвращает список событий из JSON-строки
     public static List<Event> fromJsonList(String json) {
         try {
             return fromJsonArray(new JSONArray(json));

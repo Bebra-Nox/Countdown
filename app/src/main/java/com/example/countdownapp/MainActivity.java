@@ -1,6 +1,11 @@
 package com.example.countdownapp;
 
+import android.annotation.SuppressLint;
+import android.app.AlarmManager;
 import android.app.DatePickerDialog;
+import android.app.PendingIntent;
+import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -8,6 +13,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
+import java.time.ZoneId;
 import androidx.appcompat.app.AppCompatActivity;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -52,9 +59,38 @@ public class MainActivity extends AppCompatActivity {
                 refreshDisplay();
                 eventNameInput.setText("");
                 eventDateInput.setText("");
+                scheduleEventReminder(event);
             } catch (Exception e) {
             }
         });
+    }
+    @SuppressLint("ScheduleExactAlarm")
+    private void scheduleEventReminder(Event event) {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+        Intent intent = new Intent(this, EventReminderReceiver.class);
+        intent.putExtra("event_name", event.getName());
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                this, event.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        long triggerTime = event.getDate().atStartOfDay().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+
+        if (alarmManager != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                );
+            } else {
+                alarmManager.setExact(
+                        AlarmManager.RTC_WAKEUP,
+                        triggerTime,
+                        pendingIntent
+                );
+            }
+            String message = "Будильник установлен на событие: " + event.getName();
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        }
     }
     public void showDatePicker(View view) {
         EditText dateInput = findViewById(R.id.eventDate);
@@ -85,7 +121,6 @@ public class MainActivity extends AppCompatActivity {
             if (days >= 0) {
                 displayList.add(event.getName() + " — Осталось " + days + " дней");
             } else {
-                // Переворачиваем порядок, чтобы получить положительное число
                 days = ChronoUnit.DAYS.between(event.getDate(), today);
                 displayList.add(event.getName() + " — Прошло " + days + " дней");
             }

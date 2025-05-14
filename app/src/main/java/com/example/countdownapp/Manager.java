@@ -2,8 +2,6 @@ package com.example.countdownapp;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 

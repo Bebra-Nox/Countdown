@@ -2,11 +2,16 @@ package com.example.countdownapp;
 
 import android.annotation.SuppressLint;
 import android.app.AlarmManager;
+import android.util.Log;
 import android.app.DatePickerDialog;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -16,11 +21,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 import java.time.ZoneId;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -31,6 +38,10 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
+                .detectDiskReads()
+                .penaltyLog()
+                .build());
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -56,23 +67,44 @@ public class MainActivity extends AppCompatActivity {
                 LocalDate date = LocalDate.parse(dateString, formatter);
                 Event event = new Event(name, date, isFuture);
                 manager.addEvent(event);
+                scheduleEventReminder(event);
+                showTestNotification(event.getName());
                 refreshDisplay();
                 eventNameInput.setText("");
                 eventDateInput.setText("");
-                scheduleEventReminder(event);
             } catch (Exception e) {
             }
         });
     }
     @SuppressLint("ScheduleExactAlarm")
     private void scheduleEventReminder(Event event) {
+        if (event.getDate() == null) {
+            Toast.makeText(this, "Выберите дату события", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+
+        long triggerTime = 0;
+        Log.d("CountdownApp", "Будильник установлен на: " + new Date(triggerTime));
         AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
         Intent intent = new Intent(this, EventReminderReceiver.class);
         intent.putExtra("event_name", event.getName());
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                this, event.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        long triggerTime = event.getDate().atStartOfDay().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+                this,
+                event.hashCode(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        LocalDate eventDate = event.getDate();
+
+        LocalDate reminderDate = eventDate.minusDays(1);
+        triggerTime = reminderDate.atStartOfDay()
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli();
+        Log.d("CountdownApp", "Будильник установлен на: " + new Date(triggerTime));
 
         if (alarmManager != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -88,7 +120,8 @@ public class MainActivity extends AppCompatActivity {
                         pendingIntent
                 );
             }
-            String message = "Будильник установлен на событие: " + event.getName();
+
+            String message = "Напоминание установлено за день до события: " + event.getName();
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
         }
     }
@@ -111,6 +144,33 @@ public class MainActivity extends AppCompatActivity {
         );
 
         datePickerDialog.show();
+    }
+    private void showTestNotification(String eventName) {
+        NotificationManager notificationManager = (NotificationManager)
+                getSystemService(Context.NOTIFICATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    "event_test_channel",
+                    "Добавление события",
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+            notificationManager.createNotificationChannel(channel);
+        }
+        Intent intent = new Intent(this, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "event_test_channel")
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Вы добавили событие")
+                .setContentText(eventName + " — событие добавлено!")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true);
+        notificationManager.notify(12345, builder.build());
     }
     private void refreshDisplay() {
         displayList.clear();

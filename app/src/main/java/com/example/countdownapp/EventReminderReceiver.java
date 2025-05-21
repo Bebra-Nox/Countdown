@@ -41,7 +41,6 @@ public class EventReminderReceiver extends BroadcastReceiver {
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true);
-
         notificationManager.notify(NOTIFICATION_ID, builder.build());
     }
 }
